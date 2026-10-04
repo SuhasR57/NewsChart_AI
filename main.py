@@ -1,5 +1,6 @@
 import argparse
 import json
+from pathlib import Path
 
 from src.data_loader import (
     find_invalid_numeric_values,
@@ -7,41 +8,54 @@ from src.data_loader import (
     load_csv,
 )
 from src.data_validator import validate_data
+from src.fact_engine import calculate_facts
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Inspect and validate a CSV for NewsChart AI."
+        description="Inspect, validate, and summarize CSV data."
     )
     parser.add_argument("file", help="Path to the CSV file")
-    parser.add_argument(
-        "--metric",
-        help="Column expected to contain numeric measurements",
-    )
-    parser.add_argument(
-        "--time",
-        help="Time column; enables validation and requires --metric",
-    )
+    parser.add_argument("--metric", help="Numeric measurement column")
+    parser.add_argument("--time", help="Time column")
     parser.add_argument(
         "--time-kind",
         choices=["year", "date"],
         default="year",
-        help="Interpret time values as years or dates (default: year)",
     )
     parser.add_argument(
         "--date-format",
         default="%Y-%m-%d",
         help="Date format when using --time-kind date",
     )
+    parser.add_argument(
+        "--facts",
+        action="store_true",
+        help="Calculate statistical facts from validated data",
+    )
+    parser.add_argument(
+        "--unit",
+        default="unspecified",
+        help="Metric unit, such as USD, people, or units",
+    )
+    parser.add_argument(
+        "--output",
+        help="Save facts to a new JSON file; requires --facts",
+    )
     args = parser.parse_args()
 
     if args.time is not None and args.metric is None:
         parser.error("--time requires --metric.")
 
+    if args.facts and (args.time is None or args.metric is None):
+        parser.error("--facts requires --time and --metric.")
+
+    if args.output is not None and not args.facts:
+        parser.error("--output requires --facts.")
+
     try:
         df = load_csv(args.file)
 
-        # Day 2: validate the selected columns.
         if args.time is not None:
             result = validate_data(
                 df,
@@ -57,6 +71,41 @@ def main():
                     print(f"- {error}")
                 raise SystemExit(1)
 
+            if args.facts:
+                facts = calculate_facts(
+                    result.data,
+                    time_column=args.time,
+                    metric_column=args.metric,
+                    time_kind=args.time_kind,
+                    unit=args.unit,
+                )
+                payload = json.dumps(
+                    facts,
+                    indent=2,
+                    allow_nan=False,
+                )
+
+                if args.output is not None:
+                    output_path = Path(args.output)
+
+                    if output_path.suffix.lower() != ".json":
+                        raise ValueError(
+                            "The output file must have a .json extension."
+                        )
+
+                    # Exclusive creation protects existing files,
+                    # including the input dataset.
+                    with output_path.open(
+                        "x", encoding="utf-8"
+                    ) as output_file:
+                        output_file.write(payload + "\n")
+
+                    print(f"\nFacts saved to: {output_path.resolve()}")
+
+                print("\nSTATISTICAL FACTS")
+                print(payload)
+                return
+
             print("\nVALIDATION PASSED")
             print(
                 f"{len(result.data)} observations, "
@@ -65,7 +114,7 @@ def main():
             print(result.data.to_string(index=False))
             return
 
-        # Day 1: inspect the dataset.
+        # Preserve the Day 1 inspection workflow.
         if args.metric is not None and args.metric not in df.columns:
             raise ValueError(
                 f"Column '{args.metric}' does not exist."
@@ -86,6 +135,9 @@ def main():
             else:
                 print(invalid.to_string(index=False))
 
+    except FileExistsError:
+        print("Error: Output file already exists. Choose a new filename.")
+        raise SystemExit(1)
     except (ValueError, OSError) as exc:
         print(f"Error: {exc}")
         raise SystemExit(1)
