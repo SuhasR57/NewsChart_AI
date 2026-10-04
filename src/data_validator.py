@@ -66,9 +66,13 @@ def validate_data(
         errors="coerce",
     )
 
+
     invalid = (
         ~missing_masks[metric_column]
-        & converted.isna()
+        & (
+            converted.isna()
+            | converted.isin([float("inf"), float("-inf")])
+        )
     )
 
     if invalid.any():
@@ -82,7 +86,7 @@ def validate_data(
         ]
         errors.append(
             f"Column '{metric_column}' contains invalid numbers "
-            f"({'; '.join(entries)}). Replace them with numeric values."
+            f"({'; '.join(entries)}). Replace them with finite numeric values."
         )
 
     if errors:
