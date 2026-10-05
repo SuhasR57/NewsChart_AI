@@ -141,9 +141,11 @@ News_AI/
 │   ├── data_loader.py
 │   ├── data_validator.py
 │   └── fact_engine.py
+|       chart_builder.py
 ├── tests/
 │   ├── test_data_validator.py
 │   └── test_fact_engine.py
+|       test_chart_builder.py
 ├── main.py
 ├── requirements.txt
 ├── .gitignore
@@ -159,3 +161,63 @@ News_AI/
 - Calculations use floating-point arithmetic.
 - Non-finite calculation results are rejected.
 - Input DataFrames and CSV files are not modified.
+
+## Day 4: Interactive charts
+
+The application supports manually selected line and bar charts.
+
+Charts and statistical facts use the same validated, chronologically
+sorted dataset. Chart creation does not aggregate, remove, or modify
+observations.
+
+### Line chart
+
+```powershell
+.\.venv\Scripts\python.exe main.py data/sales_clean.csv --time year --metric sales --unit "sales units" --chart line --chart-output sales_line.html
+```
+
+### Bar chart with dates
+
+```powershell
+.\.venv\Scripts\python.exe main.py data/sales_dates.csv --time date --metric sales --time-kind date --unit "sales units" --chart bar --chart-output sales_dates_bar.html
+```
+
+### Export facts and a chart together
+
+```powershell
+.\.venv\Scripts\python.exe main.py data/sales_clean.csv --time year --metric sales --unit "sales units" --facts --output sales_summary_facts.json --chart line --chart-output sales_summary_line.html
+```
+
+### Open a chart
+
+```powershell
+Start-Process .\sales_line.html
+```
+
+HTML exports embed Plotly and work without an internet connection.
+Hover over points or bars to inspect their periods and values.
+
+The title and vertical axis include the metric name and unit.
+Zero and negative measurements are preserved.
+
+### Export rules
+
+- Select the chart manually with --chart line or --chart bar.
+- Supply an HTML filename using --chart-output.
+- The output folder must already exist.
+- Existing files are never overwritten.
+- When exporting facts and a chart together, both results are generated
+  before writing. A file-system error during export may leave one file saved.
+
+### Chart validation
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_chart_builder.py" -v
+```
+
+Chart tests cover plotted values, ordering, labels, negative values,
+flat data, larger datasets, input preservation, and agreement with
+statistical facts.
+
+Also inspect exported HTML files manually to verify hover behavior,
+readability, zooming, and offline operation.
