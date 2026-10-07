@@ -5,3 +5,8 @@ __pycache__/
 .env
 *_facts.json
 *.html
+# Generated narrative reports
+*_report.json
+
+# Local AWS credentials
+.aws/

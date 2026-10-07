@@ -1,2 +1,4 @@
 pandas
 plotly
+boto3>=1.41.0
+botocore[crt]

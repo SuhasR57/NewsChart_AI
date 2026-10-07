@@ -134,22 +134,38 @@ starting values, time gaps, input preservation, and JSON serialization.
 ## Project structure
 
 ```text
-News_AI/
-├── data/
-├── src/
+C:\News_AI\
+├── data\
+│   ├── sales_clean.csv
+│   ├── sales_missing.csv
+│   ├── sales_invalid.csv
+│   ├── sales_unsorted.csv
+│   ├── sales_duplicate.csv
+│   ├── sales_single.csv
+│   └── sales_dates.csv
+│
+├── src\
 │   ├── __init__.py
 │   ├── data_loader.py
 │   ├── data_validator.py
-│   └── fact_engine.py
-|       chart_builder.py
-├── tests/
+│   ├── fact_engine.py
+│   ├── chart_builder.py
+│   └── narrative_generator.py
+│
+├── tests\
 │   ├── test_data_validator.py
-│   └── test_fact_engine.py
-|       test_chart_builder.py
+│   ├── test_fact_engine.py
+│   ├── test_chart_builder.py
+│   └── test_narrative_generator.py
+│
 ├── main.py
+├── bedrock_smoke_test.py
+├── try_narrative.py
 ├── requirements.txt
 ├── .gitignore
-└── README.md
+├── README.md
+│
+└── .venv\         
 ```
 
 ## Calculation limitations
@@ -221,3 +237,121 @@ statistical facts.
 
 Also inspect exported HTML files manually to verify hover behavior,
 readability, zooming, and offline operation.
+
+## Day 5: AI-generated narratives
+
+The application sends computed statistical facts to Amazon Bedrock
+and generates a short, neutral report.
+
+Available styles:
+
+- summary: one short paragraph.
+- news: a factual headline and paragraph.
+- business: three factual briefing bullets.
+
+### AWS authentication
+
+Configure the newschart profile using AWS CLI v2:
+
+```powershell
+aws configure set region us-east-1 --profile newschart
+aws login --profile newschart
+aws sts get-caller-identity --profile newschart
+```
+
+The selected identity must have permission to invoke the model.
+If the login expires, run aws login again.
+
+Python dependencies include boto3>=1.41.0 and botocore[crt]
+for browser-login credential support.
+
+### Generate a narrative
+
+```powershell
+.\.venv\Scripts\python.exe main.py data/sales_clean.csv --time year --metric sales --unit "sales units" --narrative summary
+```
+
+### Export a report and its evidence
+
+```powershell
+.\.venv\Scripts\python.exe main.py data/sales_clean.csv --time year --metric sales --unit "sales units" --narrative news --report-output sales_news_report.json
+```
+
+The report JSON contains:
+
+- The fact dictionary supplied to the model.
+- Generated text.
+- Requested model identifier and AWS Region.
+- Prompt version and selected style.
+- Request duration.
+- Token usage when available.
+- Completion reason and request ID.
+- Warnings, including possible output truncation.
+
+Existing output files are never overwritten.
+
+### Generate facts, a chart, and a report together
+
+```powershell
+.\.venv\Scripts\python.exe main.py data/sales_clean.csv --time year --metric sales --unit "sales units" --facts --output day5_facts.json --chart line --chart-output day5_chart.html --narrative business --report-output day5_report.json
+```
+
+Validation runs once. Charts and statistics use the same sorted data,
+and the narrative receives the computed facts.
+
+### Model configuration
+
+Defaults:
+
+- AWS profile: newschart
+- AWS Region: us-east-1
+- Model: us.amazon.nova-lite-v1:0
+- Maximum output tokens: 500
+- Temperature: 0.1
+
+Profile, Region, and model can be selected using --aws-profile,
+--aws-region, and --model-id.
+
+Changing models may require different permissions, availability,
+or inference parameters. The defaults were chosen for Nova Lite.
+
+### Timeouts and errors
+
+The client uses a 10-second connection timeout and a 60-second read
+timeout. These are network-operation timeouts, not an exact overall
+execution deadline.
+
+Automatic invocation retries are disabled. Authentication failures,
+service errors, and timeouts produce readable messages.
+
+### Cost and factual limitations
+
+Each command containing --narrative makes one real model request
+and may incur charges. Other workflows do not invoke Bedrock.
+
+Instructions ask the model to preserve supplied facts and avoid
+invented causes, quotes, recommendations, or forecasts.
+
+Generated text still requires review. Low temperature does not
+guarantee factual accuracy or identical repeated responses.
+
+For each factual claim, check:
+
+- Does its number match the fact dictionary?
+- Does its period match?
+- Is the unit correct?
+- Is the direction of change correct?
+- Does it introduce an unsupported explanation?
+- Does it mention percentage change when that fact was omitted?
+
+### Tests
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_narrative_generator.py" -v
+```
+
+These tests mock AWS and do not make paid requests. They verify
+prompt construction, request configuration, response handling,
+metadata, and readable errors.
+
+Real narrative accuracy is checked separately against computed facts.
