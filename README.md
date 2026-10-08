@@ -437,3 +437,115 @@ Tests mock AWS and verify schema validation, length limits, correction
 retries, the two-attempt limit, and failure handling without paid calls.
 
 Real report content must be reviewed separately.
+
+## Day 7: Analysis API
+
+FastAPI connects CSV loading, validation, statistics, chart creation,
+and structured report generation.
+
+### Start the local server
+
+```powershell
+cd C:\News_AI
+.\.venv\Scripts\python.exe -m uvicorn api:app --reload --host 127.0.0.1 --port 8000
+```
+
+Open http://127.0.0.1:8000/docs for interactive API documentation.
+
+Press Ctrl+C in the terminal to stop the server.
+
+### Endpoints
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | /health | Check the API process and configured limits |
+| POST | /preview | Return CSV columns, inspection details, and five rows |
+| POST | /analyze | Return facts, Plotly chart data, and a structured report |
+| POST | /analysis/{analysis_id}/report/retry | Retry a failed report using retained facts |
+
+Health and preview do not invoke Bedrock.
+
+### Analysis inputs
+
+Upload a CSV and supply these multipart form fields:
+
+- time_column: CSV time column.
+- metric_column: CSV measurement column.
+- metric_name: human-readable display name.
+- unit: measurement unit.
+- chart_type: line or bar.
+- time_kind: year or date.
+- date_format: defaults to %Y-%m-%d.
+
+Example: year, sales, Annual sales, sales units, line, year.
+
+### Limits
+
+- Maximum CSV file size: 2 MiB (2,097,152 bytes).
+- Maximum dataset size: 10,000 rows.
+
+These are application-level checks. The multipart upload is received
+before the file-size check; incoming HTTP-body limits require
+additional configuration before external deployment.
+
+### Responses
+
+Successful analysis returns:
+
+- status: complete.
+- facts: computed statistical facts.
+- chart: Plotly data and layout.
+- report: headline, summary, key_findings, and report.
+- report_metadata: model request details.
+- content_review_required: true.
+
+Invalid uploads or analysis settings are rejected before model invocation.
+
+HTTP status codes:
+
+- 200: preview, complete analysis, or analysis with a report failure.
+- 400: unsuitable CSV upload.
+- 413: file-size or row limit exceeded.
+- 422: invalid settings, data, or missing request fields.
+- 404: retry analysis ID unavailable or expired.
+- 409: retry already running or report already generated.
+
+### Report failure and retry
+
+If generation fails, the response preserves facts and chart data
+and returns status: report_failed.
+
+When temporary storage is available, the response includes
+analysis_id and report_retry_url. Successful initial analyses
+do not receive an analysis ID.
+
+The retry endpoint uses server-retained facts. It does not reload
+the CSV, recalculate statistics, or rebuild the chart.
+
+Each generation operation can make up to two billable model requests,
+including one correction retry for malformed output.
+
+### Temporary storage
+
+Failed analyses are retained in process memory:
+
+- Maximum 50 results.
+- Results expire after 30 minutes.
+- Older inactive entries may be evicted.
+- Concurrent retries for the same analysis are rejected.
+
+Restarting or reloading the server clears stored results.
+Use one server worker for this local MVP. Persistent storage and
+user access controls are needed before deployment.
+
+### Tests
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_api.py" -v
+```
+
+API tests mock model generation and do not make paid requests.
+They check uploads, validation, chart and fact responses, report
+failures, and retries.
+
+Generated report claims still require comparison with supplied facts.

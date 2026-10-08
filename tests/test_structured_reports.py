@@ -53,12 +53,24 @@ class TestReportSchema(unittest.TestCase):
         with self.assertRaisesRegex(ReportFormatError, "Invalid JSON"):
             parse_report('{"headline":')
 
-    def test_markdown_fences_are_rejected(self):
-        text = "```json\n" + json.dumps(valid_report()) + "\n```"
+    def test_complete_markdown_fence_is_accepted(self):
+        expected = valid_report()
+        text = "```json\n" + json.dumps(expected) + "\n```"
+
+        self.assertEqual(parse_report(text), expected)
+
+    def test_commentary_outside_fence_is_rejected(self):
+        text = (
+            "Here is your report:\n"
+            "```json\n"
+            + json.dumps(valid_report())
+            + "\n```"
+        )
 
         with self.assertRaises(ReportFormatError):
             parse_report(text)
 
+    
     def test_non_object_is_rejected(self):
         with self.assertRaisesRegex(
             ReportFormatError, "JSON object"
