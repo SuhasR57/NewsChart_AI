@@ -37,20 +37,41 @@ def main():
     parser.add_argument("--date-format", default="%Y-%m-%d")
     parser.add_argument("--unit", default="unspecified")
 
-    parser.add_argument("--facts", action="store_true")
-    parser.add_argument("--output", help="New facts JSON filename")
-
-    parser.add_argument("--chart", choices=["line", "bar"])
-    parser.add_argument("--chart-output", help="New chart HTML filename")
-
     parser.add_argument(
-        "--narrative",
-        choices=["summary", "news", "business"],
-        help="Generate a report through one Bedrock request",
+        "--facts",
+        action="store_true",
+        help="Calculate statistical facts",
     )
     parser.add_argument(
+        "--output",
+        help="New facts JSON filename; requires --facts",
+    )
+
+    parser.add_argument(
+        "--chart",
+        choices=["line", "bar"],
+        help="Manually select a chart type",
+    )
+    parser.add_argument(
+        "--chart-output",
+        help="New chart HTML filename",
+    )
+
+    report_options = parser.add_mutually_exclusive_group()
+    report_options.add_argument(
+        "--narrative",
+        choices=["summary", "news", "business"],
+        help="Generate a free-form narrative through Bedrock",
+    )
+    report_options.add_argument(
+        "--structured-report",
+        action="store_true",
+        help="Generate a schema-validated JSON report through Bedrock",
+    )
+
+    parser.add_argument(
         "--report-output",
-        help="New JSON filename for narrative text and metadata",
+        help="New JSON filename for generated report and metadata",
     )
     parser.add_argument("--aws-profile", default="newschart")
     parser.add_argument("--aws-region", default="us-east-1")
@@ -61,10 +82,13 @@ def main():
 
     args = parser.parse_args()
 
+    needs_report = (
+        args.narrative is not None or args.structured_report
+    )
     needs_analysis = (
         args.facts
         or args.chart is not None
-        or args.narrative is not None
+        or needs_report
     )
 
     if args.time is not None and args.metric is None:
@@ -74,7 +98,7 @@ def main():
         args.time is None or args.metric is None
     ):
         parser.error(
-            "Facts, charts, and narratives require --time and --metric."
+            "Facts, charts, and reports require --time and --metric."
         )
 
     if args.output is not None and not args.facts:
@@ -86,11 +110,13 @@ def main():
     if args.chart is not None and args.chart_output is None:
         parser.error("--chart requires --chart-output.")
 
-    if args.report_output is not None and args.narrative is None:
-        parser.error("--report-output requires --narrative.")
+    if args.report_output is not None and not needs_report:
+        parser.error(
+            "--report-output requires --narrative or --structured-report."
+        )
 
     try:
-        # Check all destinations before making a model request.
+        # Check destinations before computation or paid model requests.
         destinations = []
 
         for filename, extension in (
@@ -137,9 +163,11 @@ def main():
 
             if not validation.is_valid:
                 print("\nVALIDATION FAILED")
-                print(*validation.errors, sep="\n")
+                for error in validation.errors:
+                    print(f"- {error}")
                 raise SystemExit(1)
 
+            # Charts and facts share the same validated, sorted data.
             validated_data = validation.data
             facts = None
             facts_payload = None
@@ -147,8 +175,7 @@ def main():
             report = None
             report_payload = None
 
-            # Compute facts once, whether displayed or sent to Bedrock.
-            if args.facts or args.narrative is not None:
+            if args.facts or needs_report:
                 facts = calculate_facts(
                     validated_data,
                     time_column=args.time,
@@ -157,7 +184,9 @@ def main():
                     unit=args.unit,
                 )
                 facts_payload = json.dumps(
-                    facts, indent=2, allow_nan=False
+                    facts,
+                    indent=2,
+                    allow_nan=False,
                 )
 
             if args.chart is not None:
@@ -175,7 +204,6 @@ def main():
                 )
 
             if args.narrative is not None:
-                # AWS dependencies are needed only for narratives.
                 from src.narrative_generator import generate_narrative
 
                 print("\nRequesting a narrative from Bedrock...")
@@ -188,7 +216,21 @@ def main():
                     region_name=args.aws_region,
                 )
 
-                # Save the evidence alongside the generated report.
+            elif args.structured_report:
+                from src.structured_report_generator import (
+                    generate_structured_report,
+                )
+
+                print("\nRequesting a structured report from Bedrock...")
+
+                report = generate_structured_report(
+                    facts,
+                    model_id=args.model_id,
+                    profile_name=args.aws_profile,
+                    region_name=args.aws_region,
+                )
+
+            if report is not None:
                 report_payload = json.dumps(
                     {
                         "facts": facts,
@@ -207,7 +249,8 @@ def main():
 
             if args.report_output is not None:
                 write_new_file(
-                    args.report_output, report_payload + "\n"
+                    args.report_output,
+                    report_payload + "\n",
                 )
 
             if args.facts:
@@ -216,13 +259,31 @@ def main():
 
             if report is not None:
                 print("\nGENERATED REPORT")
-                print(report["text"])
+
+                if args.structured_report:
+                    content = report["report"]
+
+                    print(f"\n{content['headline']}")
+                    print(f"\nSUMMARY\n{content['summary']}")
+
+                    print("\nKEY FINDINGS")
+                    for finding in content["key_findings"]:
+                        print(f"- {finding}")
+
+                    print(f"\nREPORT\n{content['report']}")
+
+                    print(
+                        "\nContent review required: compare every claim "
+                        "against the supplied facts."
+                    )
+                else:
+                    print(report["text"])
+
+                    for warning in report["warnings"]:
+                        print(f"\nWarning: {warning}")
 
                 print("\nREQUEST METADATA")
                 print(json.dumps(report["metadata"], indent=2))
-
-                for warning in report["warnings"]:
-                    print(f"\nWarning: {warning}")
 
             if not needs_analysis:
                 print("\nVALIDATION PASSED")
@@ -244,6 +305,7 @@ def main():
 
         if args.metric is not None:
             invalid = find_invalid_numeric_values(df, args.metric)
+
             print(f"\nINVALID NUMERIC VALUES: {args.metric}")
             print(
                 "None found."
@@ -254,16 +316,17 @@ def main():
     except FileExistsError:
         print("Error: An output already exists. Choose a new filename.")
         raise SystemExit(1)
+
     except ImportError as exc:
         print(
             f"Missing dependency: {exc}. Install requirements using "
             r".\.venv\Scripts\python.exe -m pip install -r requirements.txt"
         )
         raise SystemExit(1)
+
     except (ValueError, OSError, RuntimeError) as exc:
         print(f"Error: {exc}")
         raise SystemExit(1)
-
 
 
 if __name__ == "__main__":
