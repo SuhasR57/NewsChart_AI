@@ -355,3 +355,85 @@ prompt construction, request configuration, response handling,
 metadata, and readable errors.
 
 Real narrative accuracy is checked separately against computed facts.
+
+## Day 6: Structured reports
+
+Generate a report with four required fields:
+
+- headline: nonempty string, maximum 15 words.
+- summary: nonempty string, maximum 60 words.
+- key_findings: 1–3 nonempty strings, maximum 35 words each.
+- report: nonempty string, maximum 180 words.
+
+Word counts use whitespace-separated words.
+
+### Generate and export
+
+```powershell
+.\.venv\Scripts\python.exe main.py data/sales_clean.csv --time year --metric sales --unit "sales units" --structured-report --report-output day6_clean_report.json
+```
+
+The exported JSON contains the supplied facts, structured report,
+request metadata, and a content_review_required flag.
+
+--structured-report and --narrative cannot be used together.
+
+### Formatting validation and retry
+
+For the configured Nova Lite model, the application requests JSON
+and validates it locally.
+
+Validation rejects:
+
+- Invalid JSON or surrounding Markdown.
+- Missing or unexpected fields.
+- Duplicate JSON keys.
+- Incorrect field types or empty text.
+- Excessive word counts.
+- Nonstandard JSON constants such as NaN and Infinity.
+- Responses truncated by the output token limit.
+
+One correction retry is allowed for malformed output. If both
+attempts fail, the application reports a clear failure.
+
+Authentication, timeout, service, and blocked-response failures
+do not trigger the formatting retry.
+
+Each structured-report command can make up to two billable requests.
+Metadata records each completed attempt's duration, token usage
+when available, completion reason, and request ID.
+
+### Content review
+
+Correct JSON does not guarantee correct claims.
+
+Compare every claim against the supplied facts, including:
+
+- Numbers, periods, units, and change directions.
+- Overall change versus changes in individual periods.
+- Tied extrema and adjacent changes.
+- Unsupported causes, recommendations, or forecasts.
+
+Formatting retries do not automatically correct factual errors.
+
+### Reference datasets
+
+| File | Expected overall change |
+|---|---|
+| sales_increasing.csv | +80 sales units; +80% |
+| sales_decreasing.csv | -80 sales units; -40% |
+| sales_flat.csv | 0 sales units; 0% |
+| sales_fluctuating.csv | +20 sales units; +20% |
+
+All four contain five observations covering 2021–2025.
+
+### Tests
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_structured_reports.py" -v
+```
+
+Tests mock AWS and verify schema validation, length limits, correction
+retries, the two-attempt limit, and failure handling without paid calls.
+
+Real report content must be reviewed separately.

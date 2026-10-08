@@ -146,7 +146,7 @@ def generate_structured_report(
                         "The response reached its token limit. "
                         "Return a shorter, complete JSON object."
                     )
-                
+            
 
                 report = parse_report(raw_text)
 
