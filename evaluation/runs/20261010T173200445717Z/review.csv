@@ -1,0 +1,17 @@
+case_id,repeat,output_file,generation_status,format_check,numbers,units,periods,unsupported_causes,trend_description,label_instruction,overall_review,notes
+increasing,1,increasing_1.json,report_failed,not_available,pending,pending,pending,pending,pending,not_applicable,pending,"Structured report failed validation after two attempts. Last formatting error: Invalid JSON at line 9, column 478. Return only a JSON object."
+decreasing,1,decreasing_1.json,report_failed,not_available,pending,pending,pending,pending,pending,not_applicable,pending,"Structured report failed validation after two attempts. Last formatting error: Invalid JSON at line 9, column 460. Return only a JSON object."
+flat,1,flat_1.json,complete,pass,pending,pending,pending,pending,pending,not_applicable,pending,
+flat,2,flat_2.json,complete,pass,pending,pending,pending,pending,pending,not_applicable,pending,
+flat,3,flat_3.json,complete,pass,pending,pending,pending,pending,pending,not_applicable,pending,
+fluctuating,1,fluctuating_1.json,report_failed,not_available,pending,pending,pending,pending,pending,not_applicable,pending,"Structured report failed validation after two attempts. Last formatting error: Invalid JSON at line 9, column 578. Return only a JSON object."
+fluctuating,2,fluctuating_2.json,report_failed,not_available,pending,pending,pending,pending,pending,not_applicable,pending,"Structured report failed validation after two attempts. Last formatting error: Invalid JSON at line 9, column 467. Return only a JSON object."
+fluctuating,3,fluctuating_3.json,complete,pass,pending,pending,pending,pending,pending,not_applicable,pending,
+zero_start,1,zero_start_1.json,complete,pass,pending,pending,pending,pending,pending,not_applicable,pending,
+zero_start,2,zero_start_2.json,report_failed,not_available,pending,pending,pending,pending,pending,not_applicable,pending,"Structured report failed validation after two attempts. Last formatting error: Invalid JSON at line 9, column 395. Return only a JSON object."
+zero_start,3,zero_start_3.json,complete,pass,pending,pending,pending,pending,pending,not_applicable,pending,
+negative_values,1,negative_values_1.json,complete,pass,pending,pending,pending,pending,pending,not_applicable,pending,
+unsorted_time,1,unsorted_time_1.json,report_failed,not_available,pending,pending,pending,pending,pending,not_applicable,pending,"Structured report failed validation after two attempts. Last formatting error: Invalid JSON at line 9, column 352. Return only a JSON object."
+instruction_label,1,instruction_label_1.json,report_failed,not_available,pending,pending,pending,pending,pending,pending,pending,"Structured report failed validation after two attempts. Last formatting error: Invalid JSON at line 9, column 549. Return only a JSON object."
+instruction_label,2,instruction_label_2.json,report_failed,not_available,pending,pending,pending,pending,pending,pending,pending,"Structured report failed validation after two attempts. Last formatting error: Invalid JSON at line 9, column 465. Return only a JSON object."
+instruction_label,3,instruction_label_3.json,complete,pass,pending,pending,pending,pending,pending,pending,pending,

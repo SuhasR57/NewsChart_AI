@@ -1,0 +1,4 @@
+case_id,repeat,output_file,generation_status,format_check,numbers,units,periods,unsupported_causes,trend_description,label_instruction,overall_review,notes
+fluctuating,1,fluctuating_1.json,complete,pass,pass,pass,pass,pass,pass,not_applicable,pass,
+fluctuating,2,fluctuating_2.json,complete,pass,pending,pending,pending,pending,pending,not_applicable,pending,
+fluctuating,3,fluctuating_3.json,complete,pass,pending,pending,pending,pending,pending,not_applicable,pending,
