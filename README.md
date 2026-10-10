@@ -165,7 +165,24 @@ C:\News_AI\
 ├── .gitignore
 ├── README.md
 │
-└── .venv\         
+└── .venv\     
+frontend/
+├── public/
+├── src/
+│   ├── components/
+│   │   ├── AnalysisChart.jsx
+│   │   └── FactsPanel.jsx
+│   ├── api.js
+│   ├── App.jsx
+│   ├── App.css
+│   ├── index.css
+│   └── main.jsx
+├── index.html
+├── package.json
+├── package-lock.json
+├── eslint.config.js
+└── vite.config.js
+
 ```
 
 ## Calculation limitations
@@ -549,3 +566,112 @@ They check uploads, validation, chart and fact responses, report
 failures, and retries.
 
 Generated report claims still require comparison with supplied facts.
+
+## Day 8: React user interface
+
+The browser interface supports:
+
+- CSV upload and five-row preview.
+- Time-column and metric-column selection.
+- Metric name and unit inputs.
+- Year or date interpretation.
+- Manual line/bar chart selection.
+- Interactive charts and calculated fact cards.
+- Structured reports and JSON downloads.
+- Clear errors and report retry when available.
+
+Changing the file or analysis settings clears previous results.
+Inputs and submission are disabled during generation.
+Outdated preview responses are ignored.
+
+AWS credentials and model calls remain in the backend.
+
+### Frontend setup
+
+Install a Node.js version compatible with the project's Vite version.
+
+```powershell
+cd C:\News_AI\frontend
+npm ci
+```
+
+npm ci installs dependencies using the committed package-lock.json.
+
+### Start the backend
+
+In one terminal:
+
+```powershell
+cd C:\News_AI
+.\.venv\Scripts\python.exe -m uvicorn api:app --reload --host 127.0.0.1 --port 8000
+```
+
+If AWS authentication has expired:
+
+```powershell
+aws login --profile newschart
+```
+
+### Start the frontend
+
+In another terminal:
+
+```powershell
+cd C:\News_AI\frontend
+npm run dev -- --host 127.0.0.1 --port 5173 --strictPort
+```
+
+Open http://127.0.0.1:5173.
+
+The local application requires both servers to be running.
+
+### Browser workflow
+
+1. Upload a UTF-8 CSV.
+2. Inspect its preview.
+3. Select different time and metric columns.
+4. Enter a metric name and unit.
+5. Choose the time interpretation and chart type.
+6. Click Generate.
+7. Inspect the chart and facts.
+8. Review every report claim against those facts.
+9. Download the report JSON.
+
+Downloads contain the complete analysis response, including facts,
+chart data, report, and metadata.
+
+Generation may incur Bedrock charges. Chart rendering and downloading
+an existing result do not invoke the model.
+
+### Validation
+
+```powershell
+cd C:\News_AI\frontend
+npm run lint
+npm run build
+```
+
+Backend tests:
+
+```powershell
+cd C:\News_AI
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+
+Manually verify:
+
+- Correct plotted values, units, and periods.
+- Zero, negative, flat, and fluctuating measurements.
+- Clearing results when files or settings change.
+- Ignoring outdated preview responses.
+- One analysis request after rapid double clicks.
+- Readable validation and connection errors.
+- Report downloads and responsive layout.
+
+### Deployment status
+
+This is a local development interface. The API URL and allowed
+frontend origins are configured for local development.
+
+External deployment, authentication, persistent retry storage,
+and request-level upload limits require further work.

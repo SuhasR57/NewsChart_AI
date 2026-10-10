@@ -4,9 +4,14 @@ __pycache__/
 .pytest_cache/
 .env
 *_facts.json
-*.html
+
+/*.html
 # Generated narrative reports
 *_report.json
 
 # Local AWS credentials
 .aws/
+
+# Frontend dependencies and build output
+frontend/node_modules/
+frontend/dist/

@@ -3,6 +3,8 @@ from typing import Annotated
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 
+from fastapi.middleware.cors import CORSMiddleware
+
 from src.data_loader import inspect_data
 from src.upload_loader import (
     MAX_UPLOAD_BYTES,
@@ -33,6 +35,17 @@ app = FastAPI(
     title="NewsChart AI",
     description="Preview CSV uploads and analyze time-series data.",
     version="0.7.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=False,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
 )
 
 
